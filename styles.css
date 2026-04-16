@@ -34,6 +34,10 @@
     --status-done-text: #15803d;
     --status-done-border: #86efac;
     
+    --status-inprogress-bg: #e0f2fe;
+    --status-inprogress-text: #0369a1;
+    --status-inprogress-border: #7dd3fc;
+    
     --tag-bg: #f1f5f9;
     --tag-border: #e2e8f0;
     
@@ -167,6 +171,11 @@ body {
     box-shadow: 0 15px 35px -5px rgba(56, 189, 248, 0.2);
     border-color: rgba(255, 255, 255, 1);
 }
+.todo-card.in-progress {
+    border-color: rgba(56, 189, 248, 0.6);
+    box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.25);
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(240, 249, 255, 0.7));
+}
 
 /* Header & Badges */
 .todo-header {
@@ -177,7 +186,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0;
 }
 
 .badge {
@@ -205,6 +214,7 @@ body {
     display: flex;
     align-items: flex-start;
     gap: 1rem;
+    margin-bottom: 1.25rem;
 }
 
 .checkbox-container {
@@ -563,6 +573,31 @@ textarea.form-input {
     font-size: 2rem;
 }
 
+.todo-card.overdue .flower-decor {
+    filter: grayscale(100%) drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+    opacity: 0.8;
+}
+
+.todo-card.overdue .flower-decor.top-right,
+.todo-card.overdue:hover .flower-decor.top-right {
+    animation: floatGhostlyRight 4s ease-in-out infinite;
+}
+
+.todo-card.overdue .flower-decor.bottom-left,
+.todo-card.overdue:hover .flower-decor.bottom-left {
+    animation: floatGhostlyLeft 4.5s ease-in-out infinite;
+}
+
+@keyframes floatGhostlyRight {
+    0%, 100% { transform: scale(1) translateY(0) rotate(15deg); }
+    50% { transform: scale(1) translateY(-8px) rotate(20deg); }
+}
+
+@keyframes floatGhostlyLeft {
+    0%, 100% { transform: scale(1) translateY(0) rotate(-15deg); }
+    50% { transform: scale(1) translateY(-10px) rotate(-10deg); }
+}
+
 .todo-card:hover .flower-decor.top-right {
     opacity: 0.8;
     animation: bloomRotate 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
@@ -582,6 +617,107 @@ textarea.form-input {
     0% { transform: scale(0) rotate(-45deg); opacity: 0; }
     30% { transform: scale(0) rotate(-45deg); opacity: 0; }
     100% { transform: scale(1) rotate(-15deg); opacity: 0.7; }
+}
+
+/* Priority Indicator */
+.priority-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    border-radius: 24px 0 0 24px;
+}
+.priority-indicator.priority-high { background-color: var(--priority-high-text); }
+.priority-indicator.priority-medium { background-color: var(--priority-med-text); }
+.priority-indicator.priority-low { background-color: var(--priority-low-text); }
+
+/* Status Dropdown */
+.status-dropdown {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 1.75rem 0.35rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid var(--status-pending-border);
+    background-color: var(--status-pending-bg);
+    color: var(--status-pending-text);
+    cursor: pointer;
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%23c2410c" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 0.75em;
+    transition: var(--transition);
+}
+.status-dropdown.done {
+    background-color: var(--status-done-bg);
+    color: var(--status-done-text);
+    border-color: var(--status-done-border);
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%2315803d" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>');
+}
+.status-dropdown.status-in-progress {
+    background-color: var(--status-inprogress-bg);
+    color: var(--status-inprogress-text);
+    border-color: var(--status-inprogress-border);
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%230369a1" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>');
+}
+.status-dropdown:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
+}
+
+/* Expand Button & Collapsible */
+.btn-expand {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0;
+    font-family: inherit;
+    transition: var(--transition);
+}
+.btn-expand:hover {
+    color: var(--text-primary);
+}
+.btn-expand i {
+    transition: transform 0.3s;
+}
+.btn-expand[aria-expanded="true"] i {
+    transform: rotate(180deg);
+}
+
+.collapsible-section.hidden {
+    display: none;
+}
+
+/* Overdue Badge & Text */
+.overdue-badge {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    margin-left: auto;
+    border: 1px solid #fca5a5;
+    white-space: nowrap;
+}
+.overdue-text .meta-text {
+    color: #b91c1c;
+}
+.overdue-text .meta-icon {
+    color: #b91c1c;
 }
 
 /* Responsive adjustments */

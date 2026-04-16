@@ -1,31 +1,34 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- State Management ---
+    let expandedTaskIds = new Set();
+    let lastEditedTaskId = null;
+
     let tasks = [
         {
-            id: 'task-' + Date.now(),
+            id: 'task-1',
             title: 'Finalize Q3 Marketing Strategy',
             description: 'Review the latest user engagement metrics and update the Q3 marketing strategy accordingly. Make sure to compile the slide deck for the executive review meeting happening next Wednesday.',
             priority: 'high',
             status: 'pending',
-            dueDate: new Date(Date.now() + (3 * 24 * 60 * 60 * 1000) + (2 * 60 * 60 * 1000)).toISOString(),
+            dueDate: '2026-04-18T10:00:00.000Z',
             tags: ['work', 'urgent', 'marketing']
         },
         {
-            id: 'task-' + (Date.now() + 1),
+            id: 'task-2',
             title: 'Feed my cat',
             description: 'Give the cat its evening wet food serving and refill the water bowl.',
             priority: 'medium',
             status: 'pending',
-            dueDate: new Date(Date.now() + (4 * 60 * 60 * 1000)).toISOString(),
+            dueDate: '2026-04-19T14:30:00.000Z',
             tags: ['home', 'pets']
         },
         {
-            id: 'task-' + (Date.now() + 2),
+            id: 'task-3',
             title: 'Watch JJK',
             description: 'Catch up on the newest Jujutsu Kaisen episode.',
             priority: 'low',
             status: 'pending',
-            dueDate: new Date(Date.now() + (2 * 24 * 60 * 60 * 1000)).toISOString(),
+            dueDate: '2026-04-20T20:00:00.000Z',
             tags: ['leisure', 'anime']
         }
     ];
@@ -48,29 +51,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputTags = document.getElementById('task-tags');
 
     // --- Core Logic ---
-    function formatTimeRemaining(dueDateStr) {
+    function formatTimeRemaining(dueDateStr, status) {
+        if (status === 'done') {
+            return { text: "Completed", isOverdue: false };
+        }
+
         const dueDate = new Date(dueDateStr);
         const now = new Date();
         const diffMs = dueDate - now;
         const isOverdue = diffMs < 0;
         const absDiff = Math.abs(diffMs);
         
-        const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
-
+        let text = "";
         if (absDiff < 60 * 1000) {
-           return isOverdue ? "Overdue, due now!" : "Due now!";
-        } else if (isOverdue) {
-           if (days > 0) return `Overdue by ${days} day${days > 1 ? 's' : ''}`;
-           if (hours > 0) return `Overdue by ${hours} hour${hours > 1 ? 's' : ''}`;
-           return `Overdue by ${minutes} minute${minutes > 1 ? 's' : ''}`;
+            text = isOverdue ? "Overdue, due now!" : "Due now!";
+        } else if (absDiff >= 24 * 60 * 60 * 1000) {
+            const days = Math.round(absDiff / (1000 * 60 * 60 * 24));
+            text = isOverdue ? `Overdue by ${days} day${days > 1 ? 's' : ''}` : `Due in ${days} day${days > 1 ? 's' : ''}`;
+        } else if (absDiff >= 60 * 60 * 1000) {
+            const hours = Math.round(absDiff / (1000 * 60 * 60));
+            text = isOverdue ? `Overdue by ${hours} hour${hours > 1 ? 's' : ''}` : `Due in ${hours} hour${hours > 1 ? 's' : ''}`;
         } else {
-            if (days > 1) return `Due in ${days} days`;
-            if (days === 1) return `Due tomorrow`;
-            if (hours > 0) return `Due in ${hours} hour${hours > 1 ? 's' : ''}`;
-            return `Due in ${minutes} minute${minutes > 1 ? 's' : ''}`;
+            const minutes = Math.round(absDiff / (1000 * 60));
+            text = isOverdue ? `Overdue by ${minutes} minute${minutes > 1 ? 's' : ''}` : `Due in ${minutes} minute${minutes > 1 ? 's' : ''}`;
         }
+
+        return { text, isOverdue };
     }
 
     function renderTasks() {
@@ -89,11 +95,15 @@ document.addEventListener('DOMContentLoaded', () => {
         tasks.forEach(task => {
             const dueDateObj = new Date(task.dueDate);
             const formattedDate = `Due ${dueDateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`;
-            const timeHint = formatTimeRemaining(task.dueDate);
+            const { text: timeHint, isOverdue } = formatTimeRemaining(task.dueDate, task.status);
             const isDone = task.status === 'done';
+            const isExpanded = expandedTaskIds.has(task.id);
+            const isLong = task.description.length > 80;
             
             const capPriority = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
-            const capStatus = task.status.charAt(0).toUpperCase() + task.status.slice(1);
+            let capStatus = task.status;
+            if (capStatus === 'in progress') capStatus = 'In Progress';
+            else capStatus = capStatus.charAt(0).toUpperCase() + capStatus.slice(1);
 
             // Generate tags HTML
             const tagsHtml = task.tags.map(tag => {
@@ -103,19 +113,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
 
             const cardHTML = `
-                <article class="todo-card ${isDone ? 'completed' : ''}" data-testid="test-todo-card" aria-labelledby="title-${task.id}">
+                <article class="todo-card ${isDone ? 'completed' : ''} ${task.status === 'in progress' ? 'in-progress' : ''} ${isOverdue ? 'overdue' : ''}" data-testid="test-todo-card" aria-labelledby="title-${task.id}">
+                    <div class="priority-indicator priority-${task.priority}" data-testid="test-todo-priority-indicator"></div>
                     <div class="flower-decor top-right" aria-hidden="true">🌸</div>
                     <div class="flower-decor bottom-left" aria-hidden="true">🌼</div>
                     <header class="todo-header">
-                        <div class="todo-badges">
-                            <span class="badge priority-${task.priority}" data-testid="test-todo-priority" aria-label="Priority: ${capPriority}">
-                                <i class="fa-solid ${task.priority === 'high' ? 'fa-fire' : task.priority === 'medium' ? 'fa-bolt' : 'fa-leaf'}" aria-hidden="true"></i> ${capPriority}
-                            </span>
-                            <span class="badge status-${task.status}" data-testid="test-todo-status" aria-label="Status: ${capStatus}">
-                                ${capStatus}
-                            </span>
-                        </div>
-
                         <div class="todo-title-row">
                             <div class="checkbox-container">
                                 <input type="checkbox" id="check-${task.id}" class="todo-checkbox" data-testid="test-todo-complete-toggle" aria-label="Mark task as complete" ${isDone ? 'checked' : ''} data-id="${task.id}">
@@ -125,12 +127,31 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${task.title}
                             </h2>
                         </div>
+
+                        <div class="todo-badges">
+                            <span class="badge priority-${task.priority}" data-testid="test-todo-priority" aria-label="Priority: ${capPriority}">
+                                <i class="fa-solid ${task.priority === 'high' ? 'fa-fire' : task.priority === 'medium' ? 'fa-bolt' : 'fa-leaf'}" aria-hidden="true"></i> ${capPriority}
+                            </span>
+                            <select class="status-dropdown status-${task.status.replace(' ', '-')}" data-testid="test-todo-status-control" data-id="${task.id}" aria-label="Change status">
+                                <option value="pending" ${task.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="in progress" ${task.status === 'in progress' ? 'selected' : ''}>In Progress</option>
+                                <option value="done" ${task.status === 'done' ? 'selected' : ''}>Done</option>
+                            </select>
+                        </div>
                     </header>
 
                     <div class="todo-body">
-                        <p class="todo-description" data-testid="test-todo-description">
-                            ${task.description}
-                        </p>
+                        ${isLong ? `
+                        <button type="button" class="btn-expand" data-testid="test-todo-expand-toggle" aria-expanded="${isExpanded}" aria-controls="collapse-${task.id}" data-id="${task.id}">
+                            ${isExpanded ? 'Hide Details' : 'Show Details'} <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'}" aria-hidden="true"></i>
+                        </button>
+                        ` : ''}
+
+                        <div id="collapse-${task.id}" class="collapsible-section ${!isLong || isExpanded ? '' : 'hidden'}" data-testid="test-todo-collapsible-section">
+                            <p class="todo-description" data-testid="test-todo-description">
+                                ${task.description}
+                            </p>
+                        </div>
 
                         <div class="todo-meta">
                             <div class="meta-row">
@@ -140,11 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </time>
                             </div>
                             
-                            <div class="meta-row ${task.priority === 'high' ? 'meta-highlight' : ''}">
+                            <div class="meta-row ${task.priority === 'high' ? 'meta-highlight' : ''} ${isOverdue ? 'overdue-text' : ''}">
                                 <i class="fa-regular fa-clock meta-icon" aria-hidden="true"></i>
-                                <time class="meta-text time-remaining" data-testid="test-todo-time-remaining" aria-live="polite">
+                                <time class="meta-text time-remaining" data-testid="test-todo-time-remaining" aria-live="polite" datetime="${task.dueDate}">
                                     ${timeHint}
                                 </time>
+                                ${isOverdue ? `<span class="overdue-badge" data-testid="test-todo-overdue-indicator">Overdue!</span>` : ''}
                             </div>
                         </div>
 
@@ -184,6 +206,31 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // Status Dropdown
+        document.querySelectorAll('.status-dropdown').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const id = e.target.getAttribute('data-id');
+                const task = tasks.find(t => t.id === id);
+                if (task) {
+                    task.status = e.target.value;
+                    renderTasks();
+                }
+            });
+        });
+
+        // Expand Toggle
+        document.querySelectorAll('[data-testid="test-todo-expand-toggle"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (expandedTaskIds.has(id)) {
+                    expandedTaskIds.delete(id);
+                } else {
+                    expandedTaskIds.add(id);
+                }
+                renderTasks();
+            });
+        });
+
         // Edit Buttons
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -204,15 +251,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Keep times updated dynamically on all rendered cards
+    // Keep times updated dynamically (without killing form focus)
     setInterval(() => {
         document.querySelectorAll('[data-testid="test-todo-time-remaining"]').forEach(el => {
             const card = el.closest('article');
-            const timeEl = card.querySelector('time');
-            if (timeEl) {
-                const newTimeText = formatTimeRemaining(timeEl.getAttribute('datetime'));
-                if (el.textContent.trim() !== newTimeText) {
-                    el.textContent = newTimeText;
+            const metaRow = el.closest('.meta-row');
+            const dueDateStr = el.getAttribute('datetime');
+            
+            const isDone = card.classList.contains('completed');
+            const status = isDone ? 'done' : 'pending'; // In-progress is fine as 'pending' for time calculation
+            
+            const { text: newTimeText, isOverdue } = formatTimeRemaining(dueDateStr, status);
+            
+            if (el.textContent.trim() !== newTimeText) {
+                el.textContent = newTimeText;
+            }
+            
+            if (isOverdue && !isDone) {
+                if (!card.classList.contains('overdue')) {
+                    card.classList.add('overdue');
+                    metaRow.classList.add('overdue-text');
+                    metaRow.insertAdjacentHTML('beforeend', '<span class="overdue-badge" data-testid="test-todo-overdue-indicator">Overdue!</span>');
+                }
+            } else {
+                if (card.classList.contains('overdue')) {
+                    card.classList.remove('overdue');
+                    metaRow.classList.remove('overdue-text');
+                    const badge = metaRow.querySelector('.overdue-badge');
+                    if (badge) badge.remove();
                 }
             }
         });
@@ -220,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Modal & Form Logic ---
     function openModalForAdd() {
+        lastEditedTaskId = null;
         modalTitle.textContent = "Add New Task";
         taskForm.reset();
         inputId.value = '';
@@ -233,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openEditModal(id) {
+        lastEditedTaskId = id;
         const task = tasks.find(t => t.id === id);
         if (!task) return;
 
@@ -253,15 +321,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeModal() {
         modalOverlay.classList.remove('active');
+        if (lastEditedTaskId) {
+            setTimeout(() => {
+                const editBtn = document.querySelector(`.edit-btn[data-id="${lastEditedTaskId}"]`);
+                if (editBtn) editBtn.focus();
+                lastEditedTaskId = null;
+            }, 0);
+        } else {
+            setTimeout(() => {
+                const addBtn = document.getElementById('btn-open-modal');
+                if (addBtn) addBtn.focus();
+            }, 0);
+        }
     }
 
     btnOpenModal.addEventListener('click', openModalForAdd);
     btnCloseModal.addEventListener('click', closeModal);
     btnCancelTask.addEventListener('click', closeModal);
     
-    // Close modal on outside click
+    // Close modal on outside click or Escape
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) closeModal();
+    });
+
+    const focusableElements = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    modalOverlay.addEventListener('keydown', function(e) {
+        if (!modalOverlay.classList.contains('active')) return;
+
+        if (e.key === 'Escape') {
+            closeModal();
+            return;
+        }
+        
+        if (e.key === 'Tab') {
+            const focusableContent = modalOverlay.querySelectorAll(focusableElements);
+            const firstElement = focusableContent[0];
+            const lastElement = focusableContent[focusableContent.length - 1];
+
+            if (e.shiftKey) { 
+                if (document.activeElement === firstElement) {
+                    lastElement.focus();
+                    e.preventDefault();
+                }
+            } else {
+                if (document.activeElement === lastElement) {
+                    firstElement.focus();
+                    e.preventDefault();
+                }
+            }
+        }
     });
 
     // Form Submit
@@ -282,12 +390,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isEditing) {
             tasks = tasks.map(t => t.id === newTask.id ? newTask : t);
+            lastEditedTaskId = newTask.id;
         } else {
             tasks.unshift(newTask); // Add to top
+            lastEditedTaskId = null;
         }
 
-        closeModal();
         renderTasks();
+        closeModal();
     });
 
     // Initialize Initial Render
